@@ -114,7 +114,7 @@ if __name__ == '__main__':
         result_str = err.read()
         has_error = True
 
-    save_file = "tts_error.txt" if has_error else '/home/pi/my_ASR_TTS/error/tts_error.' + FORMAT
+    save_file = "tts_error.txt" if has_error else '/home/pi/my_ASR_TTS/error/error.' + FORMAT
     with open(save_file, 'wb') as of:
         of.write(result_str)
 
