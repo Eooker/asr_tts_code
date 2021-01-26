@@ -1,11 +1,12 @@
+
 # coding=utf-8
 import os
 import time
 import sys
 import serial
 import RPi.GPIO as GPIO
-import commands
-sys.path.append("/home/pi/my_ASR_TTS/snowboy")
+import subprocess
+sys.path.append("/home/pi/my_ASR_TTS/snowboy/examples/Python3")
 import snowboydecoder
 
 #print(time.localtime())#获取当前时间
@@ -18,18 +19,19 @@ def color_print (color,text):          #参数：color 字体颜色 text 输出�
 color_print(7,"欢迎使用优希亚机器人！\n正在配置环境，请稍等...")
 
 interrupted = False
-model="/home/pi/snowboy/examples/Python3/resources/models"
+model="/home/pi/snowboy/examples/Python3/resources/models/snowboy.umdl"
 def interrupt_True():
     global interrupted
     interrupted = True
 def interrupt_callback():      #这个函数没有实际意义，就是返回interrupted变量，因为detector.start函数要求输入的参数是函数，所以才写成函数形式
     global interrupted
     return interrupted
-detector = snowboydecoder.HotwordDetector(model, sensitivity=0.5)
+detector = snowboydecoder.HotwordDetector(model, sensitivity=1)
 
 #检查Arduino是否连接
-if os.system("ls /dev/ttyUSB*") == 0:       #指令正确执行则返回0
-    Arduino_USB=commands.getoutput("ls /dev/ttyUSB*")     #获取Arduino端口
+Arduino_status=subprocess.getstatusoutput("ls /dev/ttyUSB*")     #获取连接状态
+if Arduino_status[0] == 0:       #指令正确执行则返回0
+    Arduino_USB=Arduino_status[1]    #获取Arduino端口
 else:
     print("\033[1;31mArduino未连接\033[0m")       #未连接则直接退出程序
     sys.exit(0)
@@ -53,7 +55,7 @@ file_start_time=time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(file_data.st_mt
 def error_check():
     file_data=os.stat("/home/pi/my_ASR_TTS/error/error.txt")
     filetime=time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(file_data.st_mtime))       #获取最后修改时间并格式化
-    print("filetime:"+filetime)
+    #print("filetime:"+filetime)
     if filetime != file_start_time :        #与file_start_time进行比较，判断是否有修改错误信息，结果为真则表示程序出错，播放失败提示，并退出程序
         os.system("python3 /home/pi/my_ASR_TTS/error/error.py")
         os.system("omxplayer /home/pi/my_ASR_TTS/error/error.wav")
@@ -62,10 +64,13 @@ def error_check():
 #控制Arduino函数，用于指示Arduino作出相应动作
 def arduino_control(command):       #目前可用指令：前进、后退
     if ser.isOpen():
-        ser.write(command)
-        arduino_data=ser.readline()   #读取Arduino发过来的数据
+        b_command=command.encode('utf-8')
+        ser.write(b_command)
+        b_arduino_data=ser.readline()   #读取Arduino发过来的数据
+        arduino_data=b_arduino_data.decode('utf-8')
         print(arduino_data)
-        arduino_data=ser.readline()
+        b_arduino_data=ser.readline()
+        arduino_data=b_arduino_data.decode('utf-8')
         print(arduino_data)                         
         if arduino_data=="无效指令":
             os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/invalid_command.wav")
@@ -84,17 +89,17 @@ while True:
 
 def all_main():
     while True:
-        print("开始聆听...")
+        color_print(7,"开始聆听...")
         os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/warning_tone.mp3") #录音提示音
         os.system("arecord -r 16000 -c 1 -d 3 -f S16_LE -t wav /home/pi/my_ASR_TTS/input/input.wav")   #录音3秒，修改-d可修改录音时间(单位：秒)
-        print("聆听结束")
+        color_print(7,"聆听结束")
         os.system("python3 /home/pi/my_ASR_TTS/code/asr_json.py")    #识别录音内容
         error_check()   #检查识别结果
         asr_result_data=os.stat("/home/pi/my_ASR_TTS/process/asr_result.txt")       #检查识别结果是否为空
         if asr_result_data.st_size != 0:
             break
         else:
-            print("没听清你在说什么。")
+            color_print(7,"没听清你在说什么。")
             os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/what_you_said.wav")
 
     with open("/home/pi/my_ASR_TTS/process/asr_result.txt","r") as asr_result_file:
@@ -105,6 +110,9 @@ def all_main():
     elif asr_result == "退出。":
         os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/goodbye.wav")
         sys.exit(0)   #退出程序
+    elif asr_result == "天气。":
+        os.system("python3 /home/pi/my_ASR_TTS/code/wether.py")
+        error_check()
     elif asr_result == "前进。":
         arduino_control("前进")
     elif asr_result == "后退。":
@@ -135,8 +143,9 @@ def all_main():
         os.system("python3 /home/pi/my_ASR_TTS/code/tts.py")      #将聊天内容合成语音
         error_check()
         os.system("omxplayer /home/pi/my_ASR_TTS/output/tts_result.wav")   #播放合成语音
+    print("over")
 
 
-my_callback=[lambda:snowboydecoder.play_audio_file(snowboydecoder.DETECT_DING),all_main]
-detector.start(detected_callback=my_callback,interrupt_check=interrupt_callback)
+#my_callback=[lambda:snowboydecoder.play_audio_file(snowboydecoder.DETECT_DING),all_main]
+detector.start(detected_callback=all_main,interrupt_check=interrupt_callback)
 detector.terminate()
