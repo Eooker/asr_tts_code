@@ -1,4 +1,3 @@
-
 # coding=utf-8
 import os
 import time
@@ -8,13 +7,11 @@ import RPi.GPIO as GPIO
 import subprocess
 sys.path.append("/home/pi/my_ASR_TTS/snowboy/examples/Python3")
 import snowboydecoder
+sys.path.append("/home/pi/my_ASR_TTS/code")
+import function
+from function import color_print   #color_print函数的参数：color 字体颜色 text 输出文本   颜色编号：0黑色 1红色 2绿色 3棕色 4蓝色 5紫色 6青色 7白色
 
 #print(time.localtime())#获取当前时间
-
-#彩色输出函数
-def color_print (color,text):          #参数：color 字体颜色 text 输出文本   颜色编号：0黑色 1红色 2绿色 3棕色 4蓝色 5紫色 6青色 7白色
-	color=str(color+30)
-	print("\033[1;"+color+"m"+text+"\033[0m")
 
 color_print(7,"欢迎使用优希亚机器人！\n正在配置环境，请稍等...")
 
@@ -32,13 +29,18 @@ detector = snowboydecoder.HotwordDetector(model, sensitivity=1)
 Arduino_status=subprocess.getstatusoutput("ls /dev/ttyUSB*")     #获取连接状态
 if Arduino_status[0] == 0:       #指令正确执行则返回0
     Arduino_USB=Arduino_status[1]    #获取Arduino端口
+    ser=serial.Serial(Arduino_USB,9600,timeout=2)   #配置USB,连接Arduino
+    time.sleep(2)
+    Arduino = True      #设置Arduino标志位，允许对Arduino进行操作
 else:
-    print("\033[1;31mArduino未连接\033[0m")       #未连接则直接退出程序
-    sys.exit(0)
-
-#配置USB,连接Arduino
-ser=serial.Serial(Arduino_USB,9600,timeout=2)
-time.sleep(2)
+    color_print(1,"Arduino未连接")      
+    Arduino = False
+    color_print(1,"是否继续?(y/n)")
+    inputdata=input().strip().lower()
+    if inputdata == 'y':
+        pass
+    else:
+        sys.exit(0)
 
 #配置GPIO，连接按键
 button=17
@@ -77,8 +79,8 @@ def arduino_control(command):       #目前可用指令：前进、后退
     else:
         print("Arduino未连接")
 
-print("配置完成")
-print("请按下黑色按键开始互动")
+color_print(7,"配置完成")
+color_print(7,"请按下黑色按键开始互动...")
 
 #按下按键开始
 while True:
@@ -111,17 +113,21 @@ def all_main():
         os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/goodbye.wav")
         sys.exit(0)   #退出程序
     elif asr_result == "天气。":
-        os.system("python3 /home/pi/my_ASR_TTS/code/wether.py")
+        function.weather()
         error_check()
-    elif asr_result == "前进。":
+    elif "播放音乐" in asr_result or "来点音乐" in asr_result or asr_result=="音乐。" :
+        os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/ok.wav")
+        function.music()
+        error_check()
+    elif asr_result == "前进。"  and  Arduino:              #判断指令并检查标志位，控制Arduino运动
         arduino_control("前进")
-    elif asr_result == "后退。":
+    elif asr_result == "后退。"  and  Arduino:
         arduino_control("后退")
-    elif asr_result == "加速。":
+    elif asr_result == "加速。"  and  Arduino:
         arduino_control("加速")
-    elif asr_result == "减速。":
+    elif asr_result == "减速。"  and  Arduino:
         arduino_control("减速")
-    elif asr_result == "停止。":
+    elif asr_result == "停止。"  and  Arduino:
         arduino_control("停止")
     elif asr_result == "关机。":          #收到关机指令时需要第二次确认
         os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/confirm_shutdown.wav")    #播放再次确认提示音
@@ -130,19 +136,16 @@ def all_main():
         error_check()
         with open("/home/pi/my_ASR_TTS/process/asr_result.txt","r") as asr_result_file:
             asr_result = asr_result_file.read()
-        if asr_result == "是" or "对" or "确定" or "关机":
+        if asr_result=="是。"  or  asr_result=="对。"  or  asr_result=="确定。"  or  asr_result=="关机。":
             os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/goodbye.wav")     #播放再见提示音   
             os.system("sudo shutdown now")         #关机
-        elif asr_result == "不" or "不是" or "取消":
+        elif asr_result=="不。"  or  asr_result=="不是。"  or  asr_result=="取消。":
             os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/cancel_shutdown.wav")     #取消关机
         else:
             os.system("omxplayer /home/pi/my_ASR_TTS/common_voice/unsure_cancel_shutdown.wav")    #没有收到确切指令，拒绝关机
-    else:                     #不是指令则进入聊天模式
-        os.system("python3 /home/pi/my_ASR_TTS/code/chat.py")     #将识别内容发送至青云客，返回聊天数据
+    else:                         #不是指令则进入聊天模式
+        function.chat()                     
         error_check()
-        os.system("python3 /home/pi/my_ASR_TTS/code/tts.py")      #将聊天内容合成语音
-        error_check()
-        os.system("omxplayer /home/pi/my_ASR_TTS/output/tts_result.wav")   #播放合成语音
     print("over")
 
 
