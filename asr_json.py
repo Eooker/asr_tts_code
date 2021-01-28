@@ -8,6 +8,11 @@ import time
 #reload(sys)
 #sys.setdefaultencoding('utf-8')
 
+#彩色输出函数
+def color_print (color,text):          #参数：color 字体颜色 text 输出文本   颜色编号：0黑色 1红色 2绿色 3棕色 4蓝色 5紫色 6青色 7白色
+	color=str(color+30)
+	print("\033[1;"+color+"m"+text+"\033[0m")
+
 IS_PY3 = sys.version_info.major == 3
 
 if IS_PY3:
@@ -151,9 +156,11 @@ if __name__ == '__main__':
     else:
         with open("/home/pi/my_ASR_TTS/error/error.txt","w") as error_file:
             error_file.write("语音识别数据错误。")
-    print("识别结果："+result_txt)
+    color_print(4,"识别结果："+result_txt)
     with open("/home/pi/my_ASR_TTS/process/asr_result.txt","w") as of:
         of.write(result_txt)
-        
+    
+
+
 #print(result_str['result'])
 

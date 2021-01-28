@@ -1,7 +1,6 @@
 # coding=utf-8
 import os
 import json
-#import urllib
 import urllib.request
 
 #彩色输出函数

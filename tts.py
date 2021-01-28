@@ -20,6 +20,11 @@ else:
 API_KEY = '4E1BG9lTnlSeIf1NQFlrSq6h'
 SECRET_KEY = '544ca4657ba8002e3dea3ac2f5fdd241'
 
+#彩色输出函数
+def color_print (color,text):          #参数：color 字体颜色 text 输出文本   颜色编号：0黑色 1红色 2绿色 3棕色 4蓝色 5紫色 6青色 7白色
+	color=str(color+30)
+	print("\033[1;"+color+"m"+text+"\033[0m")
+
 #############################单独测试此文件时可将第63、80、82、86、97、102、114、125行的注释去掉，以查看错误输出信息
 #TEXT = './kk.txt'
 ff=open('/home/pi/my_ASR_TTS/process/chat_result.txt')
@@ -27,7 +32,7 @@ ff=open('/home/pi/my_ASR_TTS/process/chat_result.txt')
 TEXT=ff.read()
 ff.close()
 #TEXT = "我和我的祖国一刻也不能分割。"
-print("回复："+TEXT)
+#color_print(5,"回复："+TEXT)
 
 # 发音人选择, 基础音库：0为度小美，1为度小宇，3为度逍遥，4为度丫丫，
 # 精品音库：5为度小娇，103为度米朵，106为度博文，110为度小童，111为度小萌，默认为度小美 
@@ -131,4 +136,4 @@ if __name__ == '__main__':
             with open("/home/pi/my_ASR_TTS/error/error.txt","a") as error_file:
                 error_file.write("合成长度超出限制。")
 
-    print("语音合成结果已保存至:" + save_file)
+    color_print(7,"语音合成结果已保存至:" + save_file)
